@@ -1,0 +1,36 @@
+{
+  "$schema": "../schemas/manifest.schema.json",
+  "schema": 4,
+  "id": "example",
+  "name": "Example line counter",
+  "version": "1.0.0",
+  "description": "Counts non-empty lines in a submitted text file and compares the count with the key answer. A minimal adapter for the registry template.",
+  "author": "Red Pen Template",
+  "homepage": "https://github.com/eslam-allam/red-pen-adapters-template",
+  "extensions": [
+    "txt",
+    "md",
+    "text"
+  ],
+  "appliesTo": [
+    "file"
+  ],
+  "output": {
+    "kinds": [
+      "diff"
+    ],
+    "label": "Line count"
+  },
+  "permissions": [],
+  "keyInput": [
+    {
+      "key": "expectedLines",
+      "label": "Expected non-empty lines",
+      "type": "number",
+      "required": true,
+      "help": "The number of non-empty lines the submitted file should contain."
+    }
+  ],
+  "settings": [],
+  "questionInput": []
+}
