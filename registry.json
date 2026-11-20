@@ -1,0 +1,43 @@
+{
+  "$schema": "./schemas/registry.schema.json",
+  "adapters": [
+    {
+      "appliesTo": [
+        "file"
+      ],
+      "author": "Red Pen Template",
+      "description": "Counts non-empty lines in a submitted text file and compares the count with the key answer. A minimal adapter for the registry template.",
+      "extensions": [
+        "txt",
+        "md",
+        "text"
+      ],
+      "files": [
+        {
+          "path": "adapter.lua",
+          "sha256": "a04be6b2cbe51a03872499829791543a7f1302dbd95dbf0feddf12361d2a41f3"
+        },
+        {
+          "path": "manifest.json",
+          "sha256": "ad0414d53b269a8228612cf8c7e071579820ec0d7af03f54d0352b32e8b7b1f3"
+        }
+      ],
+      "folder": "example",
+      "homepage": "https://github.com/eslam-allam/red-pen-adapters-template",
+      "id": "example",
+      "name": "Example line counter",
+      "permissions": [],
+      "readmeUrl": "https://raw.githubusercontent.com/eslam-allam/red-pen-adapters-template/main/example/README.md",
+      "version": "1.0.0"
+    }
+  ],
+  "description": "A starting point for a Red Pen adapter registry. Replace the example adapter and registry identity before publishing.",
+  "expiresAt": "2027-05-19T21:00:00Z",
+  "issuedAt": "2026-11-20T21:00:00Z",
+  "kind": "red-pen-adapters",
+  "name": "Example Red Pen adapter registry",
+  "publisher": "Red Pen Template",
+  "registryId": "example-registry",
+  "schema": 6,
+  "sequence": 1
+}
