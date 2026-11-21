@@ -57,8 +57,8 @@ Rules:
   slash.
 - Keep `signerRepository` separate from the registry repository.
 
-Then update `registry.json` identity fields (`name`, `publisher` as a string)
-and run the formatter:
+Then update the `registry.json` publisher (a string; schema 7 has no root
+`name`) and run the formatter:
 
 ```sh
 python scripts/registry.py format registry.json registry.config.json
@@ -160,8 +160,12 @@ workflow:
 - uploads `registry.json`, `registry.json.minisig`, `registry.sha256`, and
   `release.json`.
 
-The tag push runs `Release signed registry`. Check that the release assets
-match the workflow artifacts.
+The tag push runs `Release signed registry`. The release job requires
+`release.json.tag`, the pushed tag, and `registry-v<sequence>` to agree,
+requires the tagged commit to be reachable from `origin/main`, and re-validates
+the signature, bytes, checksums, and metadata with the pinned signer before it
+publishes. Check that the release assets match the workflow artifacts. Never
+move or recreate a `registry-v*` tag.
 
 ## 8. Verify as the app will
 
