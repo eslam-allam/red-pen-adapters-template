@@ -2,6 +2,7 @@
   "$schema": "./schemas/registry.schema.json",
   "adapters": [
     {
+      "apiVersion": 2,
       "appliesTo": [
         "file"
       ],
@@ -15,29 +16,44 @@
       "files": [
         {
           "path": "adapter.lua",
-          "sha256": "a04be6b2cbe51a03872499829791543a7f1302dbd95dbf0feddf12361d2a41f3"
+          "sha256": "3cca255dca97218a8e18a4f55468e5fce3ec4c5b0d6643fbd60b0ed137016951"
         },
         {
           "path": "manifest.json",
-          "sha256": "ad0414d53b269a8228612cf8c7e071579820ec0d7af03f54d0352b32e8b7b1f3"
+          "sha256": "2256cf1678ca2b0ecc532abbb6ce64d0c07fb555659886eead216d713abfa679"
         }
       ],
       "folder": "example",
       "homepage": "https://github.com/eslam-allam/red-pen-adapters-template",
       "id": "example",
+      "keyInput": [
+        {
+          "help": "The number of non-empty lines the submitted file should contain.",
+          "key": "expectedLines",
+          "label": "Expected non-empty lines",
+          "required": true,
+          "type": "number"
+        }
+      ],
       "name": "Example line counter",
+      "output": {
+        "kinds": [
+          "diff"
+        ],
+        "label": "Line count"
+      },
       "permissions": [],
+      "questionInput": [],
       "readmeUrl": "https://raw.githubusercontent.com/eslam-allam/red-pen-adapters-template/main/example/README.md",
+      "settings": [],
       "version": "1.0.0"
     }
   ],
-  "description": "A starting point for a Red Pen adapter registry. Replace the example adapter and registry identity before publishing.",
   "expiresAt": "2027-05-19T21:00:00Z",
   "issuedAt": "2026-11-20T21:00:00Z",
   "kind": "red-pen-adapters",
-  "name": "Example Red Pen adapter registry",
   "publisher": "Red Pen Template",
   "registryId": "example-registry",
-  "schema": 6,
+  "schema": 7,
   "sequence": 1
 }

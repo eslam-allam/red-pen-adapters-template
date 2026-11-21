@@ -1,9 +1,9 @@
 # Red Pen adapter registry template
 
-A GitHub template for a Red Pen adapter registry. It gives you a schema 6
-signed index, deterministic JSON, SHA-256 file authentication, a minisign
-signing workflow, a test-key dry run, validation, release artifacts, and the
-documentation needed to operate a registry safely.
+A GitHub template for a Red Pen adapter registry. It gives you a schema 7
+signed index for manifest schema 5 / API 2, deterministic JSON, SHA-256 file
+authentication, a minisign signing workflow, a test-key dry run, validation,
+release artifacts, and the documentation needed to operate a registry safely.
 
 Use this template for the official registry, the community registry, or your
 own third-party registry. The trust tier is declared in
@@ -12,10 +12,11 @@ own third-party registry. The trust tier is declared in
 ## What is in the box
 
 ```
-registry.json                 Signed index (schema 6)
+registry.json                 Signed index (schema 7, API 2)
 registry.config.json          Registry identity, tier, signing settings
 example/                      A minimal working adapter
-schemas/                      registry, manifest, and registry.config schemas
+schemas/                      Registry/manifest schemas, mirror list, source marker
+lua/red-pen-api.lua           Copied runtime API reference
 scripts/registry.py           Canonical JSON, key ids, CI config helpers
 scripts/update.py             Regenerate registry.json from adapter folders
 scripts/validate.py           Schema, hash, runtime, and signature validation
@@ -47,18 +48,24 @@ python scripts/sign.py --test-key
 
 ## Registry format
 
-`registry.json` is schema 6. Its exact bytes are signed with a detached
-minisign signature (`registry.json.minisig`). The index authenticates every
-adapter file by SHA-256, so the app never trusts a manifest or script from an
-unsigned source.
+`registry.json` is schema 7 and targets manifest schema 5 / API 2. Its exact
+bytes are signed with a detached minisign signature
+(`registry.json.minisig`). The index authenticates every adapter file by
+SHA-256, so the app never trusts a manifest or script from an unsigned source.
 
 The signed document carries:
 
-- `schema: 6`, `kind: "red-pen-adapters"`;
+- `schema: 7`, `kind: "red-pen-adapters"`;
 - a globally unique lowercase slug `registryId` (official `red-pen-official`, community `red-pen-community`);
 - a string `publisher`, `sequence`, `issuedAt`, and `expiresAt`;
-- one entry per adapter, with `folder`, `files[{path, sha256}]`, and
-  `readmeUrl`.
+- one entry per adapter with `apiVersion: 2`, `folder`,
+  `files[{path, sha256}]`, and `readmeUrl`;
+- mirrored `settings`, `keyInput`, `questionInput`, `output`, `runtimes`,
+  `bootstrap`, grants, and picker fields from the manifest.
+
+There is no root `name`; v2 uses `publisher`. Bare-string file entries, legacy
+permissions, and manifest `language`/`miseTool` hints are rejected. A managed
+runtime's primary tool is `manifest.runtimes[0].tool`.
 
 See [docs/format.md](docs/format.md) for every field and the deterministic JSON
 rules.
