@@ -93,13 +93,20 @@ are required.
 `<readmeBaseUrl>/<adapter-id>/README.md`. The README may reference
 `assets/...`; assets are fetched for display but are not installed.
 
+Optional `bootstrap` mirrors the manifest gating fields. It is an object with
+`mise` and/or `uv`; values are `latest`, `null`, or a full SemVer 2.0.0 pin
+(optional `v` prefix, prerelease, and build metadata). Arbitrary strings are
+rejected. A managed runtime requires non-empty `bootstrap.mise`, and a
+bootstrap without a managed runtime is rejected.
+
 ## manifest.json
 
 `schemas/manifest.schema.json` is the app-facing manifest schema. Keep using
 the manifest schema version the app supports (currently `schema: 4`). The
 registry entry does not repeat `output`, `keyInput`, `questionInput`,
-`directories`, `directoryPicker`, or `bootstrap`; those live only in the
-manifest and are covered by the manifest's SHA-256 entry.
+`directories`, or `directoryPicker`; those live only in the manifest and are
+covered by the manifest's SHA-256 entry. `bootstrap` is mirrored so the signed
+index can gate it, and the two copies must match.
 
 Runtime rules enforced by the template validator:
 

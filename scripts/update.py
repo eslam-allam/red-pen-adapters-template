@@ -31,6 +31,7 @@ MIRRORED_FIELDS = (
     "permissions",
     "registry",
     "runtimes",
+    "bootstrap",
 )
 
 
