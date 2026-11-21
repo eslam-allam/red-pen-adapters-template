@@ -16,7 +16,7 @@
       "files": [
         {
           "path": "adapter.lua",
-          "sha256": "3cca255dca97218a8e18a4f55468e5fce3ec4c5b0d6643fbd60b0ed137016951"
+          "sha256": "395ad88eb139de40b782d1211f0a0724f7147b699cbfe87b91330f59df65c149"
         },
         {
           "path": "manifest.json",
