@@ -106,9 +106,10 @@ Never edit only one side.
 
 `files` must be objects with `path` and a lowercase `sha256`. Bare file strings
 are rejected: the signed index has to authenticate every byte. `sha256` is
-optional at the schema level for an unsigned third-party registry, but the
-official and community validators require it for every file, and the template
-examples always include it. Paths are relative, use `/`, and may not contain
+optional at the JSON Schema level for an unsigned third-party registry, but this
+repository's validator requires a hash for every published file, and the signed
+official and community registries require them too. The template examples
+always include hashes. Paths are relative, use `/`, and may not contain
 `..`, an absolute path, a backslash, a colon, or control characters.
 `manifest.json` and `adapter.lua` are required.
 
