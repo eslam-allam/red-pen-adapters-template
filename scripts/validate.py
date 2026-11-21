@@ -44,6 +44,7 @@ MIRRORED_FIELDS = (
     "permissions",
     "registry",
     "runtimes",
+    "bootstrap",
 )
 ALLOWED_BACKENDS = {"conda"}
 
@@ -308,6 +309,22 @@ def validate_registry_metadata(
         errors.append("registry.json has expired; re-sign it with a new sequence")
 
 
+def bootstrap_errors(manifest: dict, label: str) -> list[str]:
+    runtimes = manifest.get("runtimes")
+    runtimes = runtimes if isinstance(runtimes, list) else []
+    bootstrap = manifest.get("bootstrap")
+    errors = []
+    if runtimes and not (
+        isinstance(bootstrap, dict)
+        and isinstance(bootstrap.get("mise"), str)
+        and bootstrap["mise"].strip()
+    ):
+        errors.append(f"{label}: managed runtimes need a non-empty bootstrap.mise")
+    if not runtimes and bootstrap:
+        errors.append(f"{label}: bootstrap is declared without a managed runtime")
+    return errors
+
+
 def validate_entry(
     root: Path,
     entry: dict,
@@ -431,6 +448,7 @@ def validate_entry(
         key_input = []
     if not isinstance(runtimes, list):
         runtimes = []
+    errors.extend(bootstrap_errors(manifest, label))
     settings = {
         field.get("key"): field
         for field in settings_list

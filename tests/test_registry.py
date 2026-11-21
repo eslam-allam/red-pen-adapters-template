@@ -120,6 +120,45 @@ class ValidationTests(unittest.TestCase):
         errors, _ = validate_lib.collect_errors(self.root)
         return errors
 
+    def update_manifest(self, mutate) -> None:
+        manifest_path = self.root / "example" / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        mutate(manifest)
+        manifest_path.write_bytes(registry_lib.canonical_bytes(manifest))
+        registry_path = self.root / "registry.json"
+        registry = json.loads(registry_path.read_text())
+        for declared in registry["adapters"][0]["files"]:
+            if declared["path"] == "manifest.json":
+                declared["sha256"] = registry_lib.sha256_file(manifest_path)
+        registry_path.write_bytes(registry_lib.canonical_bytes(registry))
+
+    def set_bootstrap(self, value, registry_value="__SAME__") -> None:
+        def mutate(manifest):
+            manifest["bootstrap"] = value
+        self.update_manifest(mutate)
+        registry_path = self.root / "registry.json"
+        registry = json.loads(registry_path.read_text())
+        registry["adapters"][0]["bootstrap"] = (
+            value if registry_value == "__SAME__" else registry_value
+        )
+        registry_path.write_bytes(registry_lib.canonical_bytes(registry))
+
+    def add_managed_runtime(self) -> None:
+        def mutate(manifest):
+            manifest["settings"] = [
+                {"key": "compiler", "label": "Compiler", "type": "text", "default": "16.2.0"}
+            ]
+            manifest["runtimes"] = [
+                {"tool": "conda:gcc", "setting": "compiler", "version": "16.2.0"}
+            ]
+        self.update_manifest(mutate)
+        registry_path = self.root / "registry.json"
+        registry = json.loads(registry_path.read_text())
+        registry["adapters"][0]["runtimes"] = [
+            {"tool": "conda:gcc", "setting": "compiler", "version": "16.2.0"}
+        ]
+        registry_path.write_bytes(registry_lib.canonical_bytes(registry))
+
     def test_baseline_valid(self) -> None:
         self.assertEqual(self.errors(), [])
         result = subprocess.run(
@@ -235,6 +274,85 @@ class ValidationTests(unittest.TestCase):
         self.assertTrue(
             any("expected signer repository" in error for error in errors), errors
         )
+
+    def test_valid_bootstrap_pins(self) -> None:
+        for value in (
+            {"mise": "latest"},
+            {"mise": "1.2.3"},
+            {"mise": "v1.2.3"},
+            {"mise": "1.2.3-rc.1+build.1"},
+            {"mise": "v1.2.3-rc.1+build.1"},
+            {"mise": "latest", "uv": "0.5.11"},
+        ):
+            with self.subTest(value=value):
+                self.tearDown()
+                self.setUp()
+                self.add_managed_runtime()
+                self.set_bootstrap(value)
+                self.assertEqual(self.errors(), [])
+
+    def test_invalid_semver_bootstrap_pins(self) -> None:
+        for value in (
+            "01.2.3",
+            "1.02.3",
+            "1.2.03",
+            "1.2",
+            "1.2.3-01",
+            "1.2.3-",
+            "1.2.3+",
+            "1.2.3-rc..1",
+            "1.2.3-rc_1",
+            "1.2.3+meta_1",
+            "1.2.3.4",
+            "latest-but-not",
+        ):
+            with self.subTest(version=value):
+                self.tearDown()
+                self.setUp()
+                self.add_managed_runtime()
+                self.set_bootstrap({"mise": value})
+                self.assertNotEqual(self.errors(), [])
+
+    def test_malformed_bootstrap_shapes(self) -> None:
+        for value in (True, "latest", [], {}):
+            with self.subTest(value=value):
+                self.tearDown()
+                self.setUp()
+                self.set_bootstrap(value)
+                self.assertNotEqual(self.errors(), [])
+
+    def test_managed_runtime_requires_mise(self) -> None:
+        self.add_managed_runtime()
+        self.assertTrue(any("managed runtimes need" in e for e in self.errors()))
+        self.set_bootstrap({"uv": "0.5.11"})
+        self.assertTrue(any("managed runtimes need" in e for e in self.errors()))
+        self.set_bootstrap({"mise": "latest"})
+        self.assertEqual(self.errors(), [])
+
+    def test_bootstrap_without_runtime_rejected(self) -> None:
+        self.set_bootstrap({"mise": "latest"})
+        self.assertTrue(any("without a managed runtime" in e for e in self.errors()))
+
+    def test_bootstrap_mirror_one_side_only(self) -> None:
+        self.add_managed_runtime()
+        # Manifest only.
+        def add(manifest):
+            manifest["bootstrap"] = {"mise": "latest"}
+        self.update_manifest(add)
+        self.assertTrue(any("bootstrap" in e for e in self.errors()))
+        # Both sides.
+        self.set_bootstrap({"mise": "latest"})
+        self.assertEqual(self.errors(), [])
+        # Registry only.
+        def remove(manifest):
+            manifest.pop("bootstrap", None)
+        self.update_manifest(remove)
+        self.assertTrue(any("bootstrap" in e for e in self.errors()))
+
+    def test_bootstrap_must_match_manifest(self) -> None:
+        self.add_managed_runtime()
+        self.set_bootstrap({"mise": "latest"}, {"mise": "v1.2.3"})
+        self.assertTrue(any("manifest bootstrap" in e for e in self.errors()))
 
     def test_stale_release_requires_pre_signing_skip(self) -> None:
         (self.root / "release.json").write_bytes(
