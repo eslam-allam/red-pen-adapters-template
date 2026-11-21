@@ -33,19 +33,6 @@ except ImportError:  # pragma: no cover - exercised by the error path
 IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 FORMULA_NUMBER = re.compile(r"^[0-9]+(?:\.[0-9]+)?$")
 VERSION_LINE = re.compile(r"^-\s+\*\*Version:\*\*\s+(\S+)\s*$", re.MULTILINE)
-MIRRORED_FIELDS = (
-    "name",
-    "description",
-    "author",
-    "icon",
-    "homepage",
-    "extensions",
-    "appliesTo",
-    "permissions",
-    "registry",
-    "runtimes",
-    "bootstrap",
-)
 ALLOWED_BACKENDS = {"conda"}
 
 
@@ -273,6 +260,10 @@ def validate_registry_metadata(
         errors.append(f"registry.json schema must be {registry_lib.SCHEMA}")
     if registry.get("kind") != registry_lib.KIND:
         errors.append(f"registry.json kind must be {registry_lib.KIND!r}")
+    if "name" in registry:
+        errors.append(
+            "registry.json root name is not allowed in schema 7; use publisher"
+        )
     try:
         registry_id, sequence = registry_lib.registry_identity(registry)
     except registry_lib.RegistryToolError as exc:
@@ -332,6 +323,7 @@ def validate_entry(
     errors: list[str],
     *,
     readme_base: str,
+    mirrored_fields: tuple[str, ...],
     check_luac: bool,
 ) -> None:
     adapter_id = entry.get("id")
@@ -364,6 +356,19 @@ def validate_entry(
         errors.append(f"{label}/manifest.json: must be an object")
         return
     errors.extend(schema_errors(manifest, manifest_schema, f"{label}/manifest.json"))
+    if manifest.get("schema") != registry_lib.MANIFEST_SCHEMA:
+        errors.append(
+            f"{label}: manifest schema must be {registry_lib.MANIFEST_SCHEMA}"
+        )
+    if (
+        manifest.get("apiVersion") != registry_lib.API_VERSION
+        or entry.get("apiVersion") != registry_lib.API_VERSION
+        or manifest.get("apiVersion") != entry.get("apiVersion")
+    ):
+        errors.append(
+            f"{label}: manifest and registry entry apiVersion must both be "
+            f"{registry_lib.API_VERSION}"
+        )
     if manifest.get("id") != adapter_id:
         errors.append(f"{label}: manifest id {manifest.get('id')!r} does not match")
     if manifest.get("version") != entry.get("version"):
@@ -371,7 +376,7 @@ def validate_entry(
             f"{label}: manifest version {manifest.get('version')!r} does not match "
             f"registry version {entry.get('version')!r}"
         )
-    for field in MIRRORED_FIELDS:
+    for field in mirrored_fields:
         if manifest.get(field) != entry.get(field):
             errors.append(
                 f"{label}: manifest {field} {manifest.get(field)!r} does not match "
@@ -391,6 +396,12 @@ def validate_entry(
             digest = declared.get("sha256")
             if not registry_lib.safe_relative_path(name):
                 errors.append(f"{label}: unsafe file path {name!r}")
+                continue
+            if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest):
+                errors.append(
+                    f"{label}: file {name!r} needs a lowercase sha256 "
+                    "(run python scripts/update.py)"
+                )
                 continue
             if name in seen:
                 errors.append(f"{label}: duplicate file {name!r}")
@@ -568,6 +579,12 @@ def collect_errors(
         errors.append(str(exc))
 
     errors.extend(schema_errors(registry, registry_schema, "registry.json"))
+    errors.extend(registry_lib.contract_source_errors(root))
+    try:
+        mirrored_fields = registry_lib.load_mirrored_fields(root)
+    except registry_lib.RegistryToolError as exc:
+        errors.append(str(exc))
+        mirrored_fields = ()
     _, key_path = validate_config(
         root, config, config_schema, registry, errors
     )
@@ -596,6 +613,7 @@ def collect_errors(
                     manifest_schema,
                     errors,
                     readme_base=str(config.get("readmeBaseUrl")),
+                    mirrored_fields=mirrored_fields,
                     check_luac=check_luac,
                 )
 

@@ -154,6 +154,9 @@ class ValidationTests(unittest.TestCase):
         self.update_manifest(mutate)
         registry_path = self.root / "registry.json"
         registry = json.loads(registry_path.read_text())
+        registry["adapters"][0]["settings"] = [
+            {"key": "compiler", "label": "Compiler", "type": "text", "default": "16.2.0"}
+        ]
         registry["adapters"][0]["runtimes"] = [
             {"tool": "conda:gcc", "setting": "compiler", "version": "16.2.0"}
         ]
@@ -168,6 +171,87 @@ class ValidationTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_registry_schema_6_is_rejected(self) -> None:
+        path = self.root / "registry.json"
+        registry = json.loads(path.read_text())
+        registry["schema"] = 6
+        path.write_bytes(registry_lib.canonical_bytes(registry))
+        errors = self.errors()
+        self.assertTrue(any("schema" in error for error in errors), errors)
+
+    def test_manifest_schema_4_is_rejected(self) -> None:
+        def mutate(manifest):
+            manifest["schema"] = 4
+
+        self.update_manifest(mutate)
+        errors = self.errors()
+        self.assertTrue(any("manifest schema must be 5" in error for error in errors), errors)
+
+    def test_missing_manifest_api_version_is_rejected(self) -> None:
+        def mutate(manifest):
+            manifest.pop("apiVersion", None)
+
+        self.update_manifest(mutate)
+        errors = self.errors()
+        self.assertTrue(any("apiVersion" in error for error in errors), errors)
+
+    def test_entry_api_version_mismatch_is_rejected(self) -> None:
+        path = self.root / "registry.json"
+        registry = json.loads(path.read_text())
+        registry["adapters"][0]["apiVersion"] = 1
+        path.write_bytes(registry_lib.canonical_bytes(registry))
+        errors = self.errors()
+        self.assertTrue(any("apiVersion" in error for error in errors), errors)
+
+    def test_bare_string_files_are_rejected(self) -> None:
+        path = self.root / "registry.json"
+        registry = json.loads(path.read_text())
+        registry["adapters"][0]["files"] = ["adapter.lua", "manifest.json"]
+        path.write_bytes(registry_lib.canonical_bytes(registry))
+        errors = self.errors()
+        self.assertTrue(any("every file must be an object" in error for error in errors), errors)
+
+    def test_missing_file_sha256_is_rejected(self) -> None:
+        path = self.root / "registry.json"
+        registry = json.loads(path.read_text())
+        registry["adapters"][0]["files"][0].pop("sha256")
+        path.write_bytes(registry_lib.canonical_bytes(registry))
+        errors = self.errors()
+        self.assertTrue(any("needs a lowercase sha256" in error for error in errors), errors)
+
+    def test_root_name_is_rejected(self) -> None:
+        path = self.root / "registry.json"
+        registry = json.loads(path.read_text())
+        registry["name"] = "Legacy registry name"
+        path.write_bytes(registry_lib.canonical_bytes(registry))
+        errors = self.errors()
+        self.assertTrue(any("root name is not allowed" in error for error in errors), errors)
+
+    def test_legacy_permission_is_rejected(self) -> None:
+        def mutate(manifest):
+            manifest["permissions"] = ["environment"]
+
+        self.update_manifest(mutate)
+        errors = self.errors()
+        self.assertTrue(any("permissions" in error for error in errors), errors)
+
+    def test_legacy_language_hint_is_rejected(self) -> None:
+        def mutate(manifest):
+            manifest["language"] = "python"
+            manifest["miseTool"] = "python"
+
+        self.update_manifest(mutate)
+        errors = self.errors()
+        self.assertTrue(any("manifest.json" in error for error in errors), errors)
+
+    def test_contract_source_mismatch_is_rejected(self) -> None:
+        path = self.root / "schemas" / "source.json"
+        source = json.loads(path.read_text())
+        source["files"]["schemas/mirror-fields.json"] = "0" * 64
+        path.write_bytes(registry_lib.canonical_bytes(source))
+        errors = self.errors()
+        self.assertTrue(any("does not match its SHA-256" in error for error in errors), errors)
 
     def test_manifest_version_mismatch(self) -> None:
         path = self.root / "example" / "manifest.json"
@@ -278,11 +362,9 @@ class ValidationTests(unittest.TestCase):
     def test_valid_bootstrap_pins(self) -> None:
         for value in (
             {"mise": "latest"},
-            {"mise": "1.2.3"},
-            {"mise": "v1.2.3"},
-            {"mise": "1.2.3-rc.1+build.1"},
-            {"mise": "v1.2.3-rc.1+build.1"},
-            {"mise": "latest", "uv": "0.5.11"},
+            {"mise": "2026.11.11"},
+            {"mise": "latest", "uv": "0.13.9"},
+            {"mise": "2026.11.11", "uv": "latest"},
         ):
             with self.subTest(value=value):
                 self.tearDown()
@@ -291,19 +373,13 @@ class ValidationTests(unittest.TestCase):
                 self.set_bootstrap(value)
                 self.assertEqual(self.errors(), [])
 
-    def test_invalid_semver_bootstrap_pins(self) -> None:
+    def test_invalid_bootstrap_pins(self) -> None:
         for value in (
+            "1.2.3",
+            "v1.2.3",
             "01.2.3",
-            "1.02.3",
-            "1.2.03",
             "1.2",
-            "1.2.3-01",
-            "1.2.3-",
-            "1.2.3+",
-            "1.2.3-rc..1",
-            "1.2.3-rc_1",
-            "1.2.3+meta_1",
-            "1.2.3.4",
+            "1.2.3-rc.1",
             "latest-but-not",
         ):
             with self.subTest(version=value):
@@ -324,7 +400,7 @@ class ValidationTests(unittest.TestCase):
     def test_managed_runtime_requires_mise(self) -> None:
         self.add_managed_runtime()
         self.assertTrue(any("managed runtimes need" in e for e in self.errors()))
-        self.set_bootstrap({"uv": "0.5.11"})
+        self.set_bootstrap({"uv": "0.13.9"})
         self.assertTrue(any("managed runtimes need" in e for e in self.errors()))
         self.set_bootstrap({"mise": "latest"})
         self.assertEqual(self.errors(), [])

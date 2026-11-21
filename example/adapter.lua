@@ -1,6 +1,10 @@
 -- Example adapter for the Red Pen registry template.
 -- It reads the submitted file inside the sandbox, counts non-empty lines,
 -- and compares the count with the instructor's key answer.
+--
+-- API v2 runtime rule: when a manifest declares a managed runtime, its tool is
+-- manifest.runtimes[1].tool. The legacy manifest.language and manifest.miseTool
+-- hints no longer exist. This example has no runtime, so it uses none.
 local context = request.context or {}
 local values = context.values or {}
 local expected = tonumber(values.expectedLines or context.expected or "")
