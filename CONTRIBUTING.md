@@ -20,8 +20,9 @@ so correctness and least privilege matter more than breadth.
 3. Bump the manifest version for every behavior change.
 4. Declare only the extensions, targets, permissions, directories, and runtimes
    the adapter actually uses.
-5. Make timeouts and failures return **no score** (or a clear error), never a
-   silent zero.
+5. Make timeouts and failures return **no score**, and report them with a typed
+   `failed` or `timeout` outcome. The old `{ error = ... }` payload is not
+   accepted, and a failure must never become a silent zero.
 6. Run:
 
    ```sh
