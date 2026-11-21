@@ -57,8 +57,8 @@ Rules:
   slash.
 - Keep `signerRepository` separate from the registry repository.
 
-Then update `registry.json` identity fields (`name`, `publisher` as a string)
-and run the formatter:
+Then update the `registry.json` publisher (a string; schema 7 has no root
+`name`) and run the formatter:
 
 ```sh
 python scripts/registry.py format registry.json registry.config.json
